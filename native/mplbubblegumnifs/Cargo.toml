@@ -9,8 +9,9 @@ name = "mplbubblegumnifs"
 crate-type = ["cdylib"]
 
 [dependencies]
-solana-sdk = "2.2.0"
-solana-program = "2.2.0"
+solana-sdk = { version = "2.2.1" }
 mpl-bubblegum = "1.4.0"
 rustler = "0.36.1"
-mpl-core = "0.9.1"
+solana-program = "2.2.1"
+solana-pubkey = "2.2.1"
+# solana-sdk = "2.2.1"
