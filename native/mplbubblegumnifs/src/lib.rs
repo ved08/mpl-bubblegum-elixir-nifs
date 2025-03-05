@@ -8,7 +8,7 @@ use mpl_bubblegum::{
     utils::get_asset_id,
 };
 use solana_client::rpc_client::RpcClient;
-use solana_program::pubkey::Pubkey;
+use solana_program::{instruction::AccountMeta as SolanaProgramAccountMeta, pubkey::Pubkey};
 use solana_sdk::{
     bs58,
     instruction::{AccountMeta, Instruction},
@@ -172,7 +172,7 @@ fn transfer_builder(
     data_hash: String,
     creator_hash: String,
     root: String,
-    proof: String,
+    proof: Vec<String>,
     merkle_tree: String,
 ) -> String {
     let rpc_url = "https://api.devnet.solana.com".to_string();
@@ -193,7 +193,11 @@ fn transfer_builder(
     let data_hash = base64::decode(data_hash).expect("Error while decoding data hash");
     let creator_hash = base64::decode(creator_hash).expect("Error while decoding creator hash");
     let root = base64::decode(root).expect("Error while decoding root hash");
-    let proof = base64::decode(proof).expect("Error while decoding root hash");
+    let proof_hashes = decode_proof(proof);
+    let proof_accounts: Vec<AccountMeta> = proof_hashes
+        .iter()
+        .map(|hash| AccountMeta::new_readonly(Pubkey::new_from_array(*hash), false))
+        .collect();
 
     let transfer_ix = TransferBuilder::new()
         .leaf_delegate(payer.pubkey().to_bytes().into(), false)
@@ -210,8 +214,17 @@ fn transfer_builder(
         )
         .data_hash(data_hash.try_into().expect("slice with incorrect length"))
         .index(nonce as u32)
-        .add_remaining_accounts(todo!())
+        .add_remaining_accounts(&proof_accounts[..])
         .instruction();
 }
 
+fn decode_proof(base64_proof: Vec<String>) -> Vec<[u8; 32]> {
+    base64_proof
+        .iter()
+        .map(|hash| {
+            let decoded = base64::decode(hash).expect("Invalid Base64"); // Step 1: Decode base64
+            decoded.as_slice().try_into().expect("Invalid hash length") // Step 2: Convert to [u8; 32]
+        })
+        .collect()
+}
 rustler::init!("Elixir.MplBubblegumNifs");
