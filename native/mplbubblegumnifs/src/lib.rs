@@ -8,11 +8,12 @@ use mpl_bubblegum::{
     utils::get_asset_id,
 };
 use solana_client::rpc_client::RpcClient;
-use solana_program::{instruction::AccountMeta as SolanaProgramAccountMeta, pubkey::Pubkey};
+use solana_program::instruction::AccountMeta as ProgramAccountMeta;
 use solana_sdk::{
     bs58,
     instruction::{AccountMeta, Instruction},
     pubkey,
+    pubkey::Pubkey,
     signature::Keypair,
     signer::Signer,
     system_instruction, system_program,
@@ -198,7 +199,14 @@ fn transfer_builder(
         .iter()
         .map(|hash| AccountMeta::new_readonly(Pubkey::new_from_array(*hash), false))
         .collect();
-
+    let mut proof_accounts_new: Vec<ProgramAccountMeta> = Vec::new();
+    for meta in &proof_accounts {
+        proof_accounts_new.push(ProgramAccountMeta {
+            pubkey: meta.pubkey.to_bytes().into(),
+            is_signer: meta.is_signer,
+            is_writable: meta.is_writable,
+        });
+    }
     let transfer_ix = TransferBuilder::new()
         .leaf_delegate(payer.pubkey().to_bytes().into(), false)
         .leaf_owner(payer.pubkey().to_bytes().into(), true)
@@ -214,8 +222,30 @@ fn transfer_builder(
         )
         .data_hash(data_hash.try_into().expect("slice with incorrect length"))
         .index(nonce as u32)
-        .add_remaining_accounts(&proof_accounts[..])
+        .add_remaining_accounts(&proof_accounts_new[..])
         .instruction();
+    let transfer_ix = Instruction {
+        program_id: transfer_ix.program_id.to_bytes().into(),
+        accounts: transfer_ix
+            .accounts
+            .iter()
+            .map(|meta| AccountMeta {
+                pubkey: meta.pubkey.to_bytes().into(),
+                is_signer: meta.is_signer,
+                is_writable: meta.is_writable,
+            })
+            .collect(),
+        data: transfer_ix.data,
+    };
+    let recent_blockhash = client.get_latest_blockhash().unwrap();
+    let tx = Transaction::new_signed_with_payer(
+        &[transfer_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash.to_bytes().into(),
+    );
+    let serialized_tx = bincode::serialize(&tx).expect("Failed to serialize transaction");
+    base64::encode(serialized_tx)
 }
 
 fn decode_proof(base64_proof: Vec<String>) -> Vec<[u8; 32]> {
