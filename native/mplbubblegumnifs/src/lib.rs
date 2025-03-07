@@ -22,13 +22,8 @@ use solana_sdk::{
 use spl_account_compression::{state::CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1, ConcurrentMerkleTree};
 use spl_merkle_tree_reference::Node;
 
-#[rustler::nif]
-fn add(a: i64, b: i64) -> i64 {
-    a + b
-}
-
 #[rustler::nif(schedule = "DirtyIo")]
-fn create_tree_config_builder(payer_secret_key: String) -> String {
+fn create_tree_config_builder(payer_secret_key: String) -> Vec<String> {
     const MAX_DEPTH: usize = 14;
     const MAX_BUFFER_SIZE: usize = 64;
     let secret_key_bytes = bs58::decode(payer_secret_key)
@@ -90,11 +85,22 @@ fn create_tree_config_builder(payer_secret_key: String) -> String {
         recent_blockhash.to_bytes().into(),
     );
     let serialized_tx = bincode::serialize(&tx).expect("Failed to serialize transaction");
-    base64::encode(serialized_tx)
+    vec![
+        base64::encode(serialized_tx),
+        merkle_tree.pubkey().to_string(),
+    ]
 }
 
 #[rustler::nif(schedule = "DirtyIo")]
-fn mint_v1_builder(payer_secret_key: String, merkle_tree: String) -> String {
+fn mint_v1_builder(
+    payer_secret_key: String,
+    merkle_tree: String,
+    name: String,
+    symbol: String,
+    uri: String,
+    seller_fee_basis_points: u16,
+    share: u8,
+) -> String {
     let rpc_url = "https://api.devnet.solana.com".to_string();
     let client = RpcClient::new(rpc_url);
     let secret_key_bytes = bs58::decode(payer_secret_key)
@@ -107,10 +113,10 @@ fn mint_v1_builder(payer_secret_key: String, merkle_tree: String) -> String {
         &pubkey!("BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"),
     );
     let mint_ix_accounts = MetadataArgs {
-        name: "Hello NIFs".to_string(),
-        symbol: "NIF".to_string(),
-        uri: "https://arweave.net/sUEsfmH7DzhI8AmCnozxcTIcGYDZsPv1gupPbw4551E".to_string(),
-        seller_fee_basis_points: 100,
+        name,
+        symbol,
+        uri,
+        seller_fee_basis_points,
         primary_sale_happened: false,
         is_mutable: false,
         edition_nonce: None,
@@ -121,7 +127,7 @@ fn mint_v1_builder(payer_secret_key: String, merkle_tree: String) -> String {
         creators: vec![Creator {
             address: payer.pubkey().to_bytes().into(),
             verified: true,
-            share: 100,
+            share,
         }],
     };
 
@@ -286,4 +292,4 @@ pub fn decode_proof(base58_strings: Vec<String>) -> Vec<[u8; 32]> {
 
     result
 }
-rustler::init!("Elixir.MplBubblegumNifs");
+rustler::init!("Elixir.MplBubblegum");

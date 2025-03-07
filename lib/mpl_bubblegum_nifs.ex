@@ -1,8 +1,10 @@
-defmodule MplBubblegumNifs do
+defmodule MplBubblegum do
   use Rustler, otp_app: :mpl_bubblegum_nifs, crate: "mplbubblegumnifs"
-  @rpc_url "https://devnet.helius-rpc.com/?api-key=53da17ee-6973-4f78-ab61-fd7a59f1cc80"
+  alias MplBubblegum.Connection
 
   def send_transaction(tx_hash) do
+    rpc_url = MplBubblegum.Connection.get_rpc_url()
+
     request_body =
       %{
         jsonrpc: "2.0",
@@ -14,10 +16,11 @@ defmodule MplBubblegumNifs do
 
     headers = [{"Content-Type", "application/json"}]
 
-    case(HTTPoison.post(@rpc_url, request_body, headers)) do
+    case(HTTPoison.post(rpc_url, request_body, headers)) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        body |> Jason.decode!() |> IO.inspect(label: "Transaction Response")
-        body
+        # body |> Jason.decode!() |> IO.inspect(label: "Transaction Response")
+        {:ok, data} = Jason.decode(body)
+        data["result"]
 
       {:ok, %HTTPoison.Response{status_code: status, body: body}} ->
         IO.puts("Error: HTTP #{status}")
@@ -35,7 +38,7 @@ defmodule MplBubblegumNifs do
     :erlang.nif_error(:nif_not_loaded)
   end
 
-  def mint_v1_builder(_secret_key, _merkle_tree) do
+  def mint_v1_builder(_secret_key, _merkle_tree, _name, _symbol, _uri, _basis, _share) do
     :erlang.nif_error(:nif_not_loaded)
   end
 
@@ -55,26 +58,33 @@ defmodule MplBubblegumNifs do
   end
 
   def create_tree_config() do
-    tx_hash =
-      create_tree_config_builder(
-        "UpTcTstVRrUTHQHdxsy84yUTKXp4CCg2dfNP6XVZJ4gUtp4uCCa849rkiWaDHfobtdrxj3KzE8t2zK2tUgrhSdG"
-      )
-
-    send_transaction(tx_hash)
+    key = Connection.get_secret_key()
+    [serialized_tx, merkle_tree] = create_tree_config_builder(key)
+    send_transaction(serialized_tx)
+    merkle_tree
   end
 
-  def mint_v1(tree_config, merkle_tree) do
+  def mint_v1(merkle_tree, name, symbol, uri, basis, share) do
+    # "BB4PeT5Vaorg9V5nqyct3dyyo3RwtZQ61FQR9JK3EnKL"
+    key = Connection.get_secret_key()
+
     tx_hash =
       mint_v1_builder(
-        "UpTcTstVRrUTHQHdxsy84yUTKXp4CCg2dfNP6XVZJ4gUtp4uCCa849rkiWaDHfobtdrxj3KzE8t2zK2tUgrhSdG",
-        "BB4PeT5Vaorg9V5nqyct3dyyo3RwtZQ61FQR9JK3EnKL"
+        key,
+        merkle_tree,
+        name,
+        symbol,
+        uri,
+        basis,
+        share
       )
 
     send_transaction(tx_hash)
   end
 
-  # MplBubblegumNifs.transfer("DGckRTAtcEe25UGbtuc7xDVUSC67VeFGHNgrVy1G2uAb", "6hxBtjckJxUf9FM8V9dDq1Wux5azG2a64osiNwP1KwDN", "DLgacSweX6fmAbnzwoFnVwcuGRMwFvdCzzwhrXuE5pPc")
   def transfer(asset_id, to_address, owner) do
+    rpc_url = MplBubblegum.Connection.get_rpc_url()
+
     request_body =
       %{
         "id" => "test",
@@ -89,7 +99,7 @@ defmodule MplBubblegumNifs do
     headers = [{"Content-Type", "application/json"}]
 
     response =
-      case(HTTPoison.post(@rpc_url, request_body, headers)) do
+      case(HTTPoison.post(rpc_url, request_body, headers)) do
         {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
           body |> Jason.decode!()
 
@@ -114,7 +124,7 @@ defmodule MplBubblegumNifs do
       |> Jason.encode!()
 
     response2 =
-      case(HTTPoison.post(@rpc_url, asset_proof_request, headers)) do
+      case(HTTPoison.post(rpc_url, asset_proof_request, headers)) do
         {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
           body |> Jason.decode!()
 
@@ -136,9 +146,11 @@ defmodule MplBubblegumNifs do
     nonce = compression["leaf_id"]
     merkle_tree = compression["tree"]
 
+    key = Connection.get_secret_key()
+
     tx =
       transfer_builder(
-        "UpTcTstVRrUTHQHdxsy84yUTKXp4CCg2dfNP6XVZJ4gUtp4uCCa849rkiWaDHfobtdrxj3KzE8t2zK2tUgrhSdG",
+        key,
         to_address,
         asset_id,
         owner,
@@ -151,10 +163,6 @@ defmodule MplBubblegumNifs do
       )
 
     send_transaction(tx)
-  end
-
-  def add(_a, _b) do
-    :erlang.nif_error(:nif_not_loaded)
   end
 
   @moduledoc """
@@ -170,7 +178,4 @@ defmodule MplBubblegumNifs do
       :world
 
   """
-  def hello do
-    :world
-  end
 end

@@ -1,4 +1,4 @@
-defmodule MplBubblegumNifs.MixProject do
+defmodule MplBubblegum.MixProject do
   use Mix.Project
 
   def project do
