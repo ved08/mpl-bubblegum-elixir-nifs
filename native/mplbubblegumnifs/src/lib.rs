@@ -20,6 +20,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_account_compression::{state::CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1, ConcurrentMerkleTree};
+use spl_merkle_tree_reference::Node;
 
 #[rustler::nif]
 fn add(a: i64, b: i64) -> i64 {
@@ -191,9 +192,21 @@ fn transfer_builder(
         &[merkle_tree.as_array()],
         &pubkey!("BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"),
     );
-    let data_hash = base64::decode(data_hash).expect("Error while decoding data hash");
-    let creator_hash = base64::decode(creator_hash).expect("Error while decoding creator hash");
-    let root = base64::decode(root).expect("Error while decoding root hash");
+    let data_hash: [u8; 32] = bs58::decode(&data_hash)
+        .into_vec()
+        .expect("Failed to decode root base58 string")
+        .try_into()
+        .expect("Failed to decode root base58 string");
+    let creator_hash: [u8; 32] = bs58::decode(&creator_hash)
+        .into_vec()
+        .expect("Failed to decode root base58 string")
+        .try_into()
+        .expect("Failed to decode root base58 string");
+    let root_bytes: [u8; 32] = bs58::decode(&root)
+        .into_vec()
+        .expect("Failed to decode root base58 string")
+        .try_into()
+        .expect("Failed to decode root base58 string");
     let proof_hashes = decode_proof(proof);
     let proof_accounts: Vec<AccountMeta> = proof_hashes
         .iter()
@@ -213,7 +226,7 @@ fn transfer_builder(
         .merkle_tree(merkle_tree.to_bytes().into())
         .tree_config(tree_config.to_bytes().into())
         .new_leaf_owner(to_address.to_bytes().into())
-        .root(root.try_into().expect("slice with incorrect length"))
+        .root(root_bytes)
         .nonce(nonce)
         .creator_hash(
             creator_hash
@@ -248,13 +261,29 @@ fn transfer_builder(
     base64::encode(serialized_tx)
 }
 
-fn decode_proof(base64_proof: Vec<String>) -> Vec<[u8; 32]> {
-    base64_proof
-        .iter()
-        .map(|hash| {
-            let decoded = base64::decode(hash).expect("Invalid Base64"); // Step 1: Decode base64
-            decoded.as_slice().try_into().expect("Invalid hash length") // Step 2: Convert to [u8; 32]
-        })
-        .collect()
+pub fn decode_proof(base58_strings: Vec<String>) -> Vec<[u8; 32]> {
+    let mut result = Vec::with_capacity(base58_strings.len());
+
+    for base58_string in base58_strings {
+        // Decode from base58
+        let bytes = bs58::decode(&base58_string)
+            .into_vec()
+            .map_err(|e| format!("Failed to decode base58 string '{}': {}", base58_string, e))
+            .unwrap();
+
+        // Check if the decoded bytes have the expected length
+        // if bytes.len() != 32 {
+        //     return Err(format!("Invalid decoded length: {}. Expected 32 bytes but got {} bytes for '{}'",
+        //         bytes.len(), bytes.len(), base58_string).into());
+        // }
+
+        // Convert to fixed-size array
+        let mut array = [0u8; 32];
+        array.copy_from_slice(&bytes);
+
+        result.push(array);
+    }
+
+    result
 }
 rustler::init!("Elixir.MplBubblegumNifs");

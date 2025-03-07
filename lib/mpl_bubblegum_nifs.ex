@@ -150,7 +150,7 @@ defmodule MplBubblegumNifs do
         merkle_tree
       )
 
-    tx
+    send_transaction(tx)
   end
 
   def add(_a, _b) do
