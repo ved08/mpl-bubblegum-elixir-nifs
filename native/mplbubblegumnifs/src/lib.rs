@@ -175,7 +175,6 @@ fn transfer_builder(
     payer_secret_key: String,
     to_address: String,
     asset_id: String,
-    owner: String,
     nonce: u64,
     data_hash: String,
     creator_hash: String,
@@ -192,7 +191,6 @@ fn transfer_builder(
 
     let to_address = Pubkey::from_str_const(&to_address);
     let asset_id = Pubkey::from_str_const(&asset_id);
-    let owner = Pubkey::from_str_const(&owner);
     let merkle_tree = Pubkey::from_str_const(&merkle_tree);
     let (tree_config, _) = Pubkey::find_program_address(
         &[merkle_tree.as_array()],

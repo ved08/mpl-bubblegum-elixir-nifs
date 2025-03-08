@@ -18,11 +18,10 @@ defmodule MplBubblegum do
 
     case(HTTPoison.post(rpc_url, request_body, headers)) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        # body |> Jason.decode!() |> IO.inspect(label: "Transaction Response")
         {:ok, data} = Jason.decode(body)
         data["result"]
 
-      {:ok, %HTTPoison.Response{status_code: status, body: body}} ->
+      {:error, %HTTPoison.Response{status_code: status, body: body}} ->
         IO.puts("Error: HTTP #{status}")
         IO.inspect(body)
         body
@@ -43,16 +42,15 @@ defmodule MplBubblegum do
   end
 
   def transfer_builder(
-        payer_secret_key,
-        to_address,
-        asset_id,
-        owner,
-        nonce,
-        data_hash,
-        creator_hash,
-        root,
-        proof,
-        merkle_tree
+        _payer_secret_key,
+        _to_address,
+        _asset_id,
+        _nonce,
+        _data_hash,
+        _creator_hash,
+        _root,
+        _proof,
+        _merkle_tree
       ) do
     :erlang.nif_error(:nif_not_loaded)
   end
@@ -60,7 +58,7 @@ defmodule MplBubblegum do
   def create_tree_config() do
     key = Connection.get_secret_key()
     [serialized_tx, merkle_tree] = create_tree_config_builder(key)
-    send_transaction(serialized_tx)
+    tx = send_transaction(serialized_tx)
     merkle_tree
   end
 
@@ -79,10 +77,11 @@ defmodule MplBubblegum do
         share
       )
 
-    send_transaction(tx_hash)
+    tx = send_transaction(tx_hash)
+    tx
   end
 
-  def transfer(asset_id, to_address, owner) do
+  def transfer(asset_id, to_address) do
     rpc_url = MplBubblegum.Connection.get_rpc_url()
 
     request_body =
@@ -153,7 +152,6 @@ defmodule MplBubblegum do
         key,
         to_address,
         asset_id,
-        owner,
         nonce,
         data_hash,
         creator_hash,
