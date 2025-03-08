@@ -7,7 +7,9 @@ defmodule MplBubblegum.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      source_url: "https://github.com/ved08/mpl-bubblegum-elixir-nifs",
+      package: package()
     ]
   end
 
@@ -23,9 +25,22 @@ defmodule MplBubblegum.MixProject do
     [
       {:rustler, "~> 0.36.1"},
       {:httpoison, "~> 2.2"},
-      {:jason, "~> 1.4"}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:jason, "~> 1.4"},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      name: "mpl_bubblegum_nifs",
+      maintainers: ["Ved"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => "https://github.com/ved08/mpl-bubblegum-elixir-nifs",
+        "Docs" => "https://github.com/ved08/mpl-bubblegum-elixir-nifs/blob/main/README.md"
+      },
+      description:
+        "MplBubblegum is an Elixir library for working with Compressed NFTs (cNFTs) on Solana via the Bubblegum program. It allows developers to create Merkle Trees, mint cNFTs, and transfer assets."
     ]
   end
 end

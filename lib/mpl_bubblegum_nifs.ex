@@ -18,18 +18,17 @@ defmodule MplBubblegum do
 
     case(HTTPoison.post(rpc_url, request_body, headers)) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        {:ok, data} = Jason.decode(body)
-        data["result"]
+        case Jason.decode(body) do
+          {:ok, %{"result" => result}} -> {:ok, result}
+          {:ok, %{"error" => error}} -> {:error, error}
+          {:error, _} -> {:error, "Invalid JSON response"}
+        end
 
       {:error, %HTTPoison.Response{status_code: status, body: body}} ->
-        IO.puts("Error: HTTP #{status}")
-        IO.inspect(body)
-        body
+        {:error, %{status: status, message: body}}
 
       {:error, %HTTPoison.Error{reason: reason}} ->
-        IO.puts("Request failed:")
-        IO.inspect(reason)
-        reason
+        {:error, %{status: "network_error", message: reason}}
     end
   end
 
@@ -58,7 +57,7 @@ defmodule MplBubblegum do
   def create_tree_config() do
     key = Connection.get_secret_key()
     [serialized_tx, merkle_tree] = create_tree_config_builder(key)
-    tx = send_transaction(serialized_tx)
+    {:ok, _signature} = send_transaction(serialized_tx)
     merkle_tree
   end
 
@@ -77,8 +76,8 @@ defmodule MplBubblegum do
         share
       )
 
-    tx = send_transaction(tx_hash)
-    tx
+    {:ok, signature} = send_transaction(tx_hash)
+    signature
   end
 
   def transfer(asset_id, to_address) do
@@ -160,11 +159,12 @@ defmodule MplBubblegum do
         merkle_tree
       )
 
-    send_transaction(tx)
+    {:ok, signature} = send_transaction(tx)
+    signature
   end
 
   @moduledoc """
-  Documentation for `MplBubblegumNifs`.
+  Documentation for `MplBubblegum`.
   """
 
   @doc """
@@ -172,7 +172,7 @@ defmodule MplBubblegum do
 
   ## Examples
 
-      iex> MplBubblegumNifs.hello()
+      iex> MplBubblegum.hello()
       :world
 
   """
