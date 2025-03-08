@@ -164,16 +164,6 @@ defmodule MplBubblegum do
   end
 
   @moduledoc """
-  Documentation for `MplBubblegum`.
-  """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> MplBubblegum.hello()
-      :world
-
+  A library in Elixir for handling compressed NFTs (cNFTs) on Solana. Published here <https://hex.pm/packages/mpl_bubblegum_nifs>
   """
 end

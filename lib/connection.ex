@@ -12,4 +12,8 @@ defmodule MplBubblegum.Connection do
   def get_rpc_url do
     Agent.get(__MODULE__, fn [_, rpc_url] -> rpc_url end)
   end
+
+  @moduledoc """
+    Before using the library, establish a connection to Solana RPC. **Use a Helius RPC URL, as native Solana RPC does not support DAS API.**
+  """
 end
