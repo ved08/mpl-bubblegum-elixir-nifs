@@ -49,11 +49,11 @@ To mint a cNFT, provide the Merkle tree address and metadata details.
 ```elixir
 tx = MplBubblegum.mint_v1(
   "9ppyWc9LjccAJPchEoPYatZQgk5PwJgUhZi3rTd8skcE", # Merkle tree address
-  "Hello NIFs",    # NFT Name
-  "NIF",           # Symbol
-  "https://metadata-uri.json", # Metadata URI
-  100,             # Seller Fee Basis Points
-  100              # Creator Share
+  "Solana Warrior",    # NFT Name
+  "SW",               # Symbol
+  "https://bafybeih7oz5pds33io34ud5ut4fd5a2jj74zoduiec2fw4oz24yqfo4aey.ipfs.w3s.link/1034.json", # Metadata URI
+  250,               # Seller Fee Basis Points
+  100                # Creator Share
 )
 
 IO.puts("Minted cNFT, tx: #{tx}")
